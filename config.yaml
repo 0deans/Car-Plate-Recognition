@@ -1,0 +1,5 @@
+path: E:\Dataset
+train: images
+val: images
+names:
+  - licence_plate
