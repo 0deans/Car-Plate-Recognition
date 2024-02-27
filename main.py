@@ -1,28 +1,41 @@
 import cv2 as cv
 from ultralytics import YOLO
-import easyocr
 import matplotlib.pyplot as plt
+import pytesseract
 import numpy as np
 
-render_text = easyocr.Reader(['en'])
-model = YOLO('model/best.pt')
-img = cv.imread('source/car5.jpg')
-kernel = np.ones((9, 9), np.uint8)
+pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Admin\\AppData\\Local\\Programs\\Tesseract-OCR\\tesseract.exe'
 
+model = YOLO('model/best.pt')
+img = cv.imread('source/car1.jpg')
 result = model(img)
+kernel = np.ones((11, 11), np.uint8)
+last_nums = []
 
 for r in result:
     boxes = r.boxes
     for box in boxes:
         x, y, w, h = box.xyxy[0]
         x, y, w, h = int(x), int(y), int(w), int(h)
-        img = img[y: h, x: w]
 
-blackhat = cv.morphologyEx(img, cv.MORPH_BLACKHAT, kernel)
-number = render_text.readtext(blackhat, detail=0)
+        img = cv.rectangle(img, (x, y), (w, h), (255, 0, 255), 3)
 
-print(number)
+        roi = img[y:h, x:w]
 
-plt.imshow(blackhat)
-plt.title('Result')
+        if roi.size != 0:
+            blackhat = cv.morphologyEx(
+                cv.cvtColor(roi, cv.COLOR_BGR2GRAY),
+                cv.MORPH_BLACKHAT, kernel)
+            number = pytesseract.image_to_string(blackhat,
+            config=r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890').replace('\n', '')
+            number = number.replace(' ', '')
+
+            if 5 < len(number) < 9:
+                last_nums.append(number)
+                last_img = roi
+
+print(last_nums)
+
+plt.imshow(img)
+plt.title(', '.join(last_nums))
 plt.show()
