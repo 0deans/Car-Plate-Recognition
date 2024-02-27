@@ -1,7 +1,13 @@
 from ultralytics import YOLO
+import torch
 
-model = YOLO('yolov8n.yaml')
+if __name__ == '__main__':
+    print(torch.cuda.is_available())
+    print(torch.__version__)
+    print(torch.version.cuda)
 
-model.train(data='config.yaml', epochs=1)
+    model = YOLO('yolov8m.yaml')
 
-model.save("detected_licence_number")
+    model.train(data='config.yaml', epochs=3, batch=-1)
+
+    model.save("detected_licence_number")
