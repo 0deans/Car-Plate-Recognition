@@ -50,8 +50,9 @@ for r in result:
             # ).replace('\n', '')
 
             nRes = reader.readtext(blackhat, detail=0)
-            if len(nRes) > 0:
-                last_nums.append(''.join(nRes).replace(' ', ''))
+            nRes = ''.join(nRes).replace(' ', '')
+            if 2 < len(nRes) < 9:
+                last_nums.append(nRes)
 
             # number = number.replace(' ', '')
             # print(number)
