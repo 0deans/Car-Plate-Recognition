@@ -2,14 +2,13 @@ import cv2 as cv
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import pytesseract
-import numpy as np
 
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Admin\\AppData\\Local\\Programs\\Tesseract-OCR\\tesseract.exe'
 
 model = YOLO('model/best.pt')
-img = cv.imread('source/car1.jpg')
+img = cv.imread('source/car12.jpg')
 result = model(img)
-kernel = np.ones((11, 11), np.uint8)
+kernel = cv.getStructuringElement(cv.MORPH_RECT, (11, 5))
 last_nums = []
 
 for r in result:
@@ -25,17 +24,22 @@ for r in result:
         if roi.size != 0:
             blackhat = cv.morphologyEx(
                 cv.cvtColor(roi, cv.COLOR_BGR2GRAY),
-                cv.MORPH_BLACKHAT, kernel)
-            number = pytesseract.image_to_string(blackhat,
-            config=r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890').replace('\n', '')
+                cv.MORPH_BLACKHAT, kernel
+            )
+
+            number = pytesseract.image_to_string(
+                blackhat,
+                config=r'--oem 3 -c tessedit_char_whitelist'
+                       r'=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
+            ).replace('\n', '')
+
             number = number.replace(' ', '')
 
-            if 5 < len(number) < 9:
-                last_nums.append(number)
+            if 5 < len(number) < 12:
+                last_nums.append(number.upper())
                 last_img = roi
 
 print(last_nums)
-
 plt.imshow(img)
 plt.title(', '.join(last_nums))
 plt.show()
