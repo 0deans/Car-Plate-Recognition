@@ -7,7 +7,7 @@ import easyocr
 pytesseract.pytesseract.tesseract_cmd = 'E:\\Tesseract-OCR\\tesseract.exe'
 
 model = YOLO('model/best.pt')
-img = cv.imread('source/car6.jpg')
+img = cv.imread('source/car8.jpg')
 result = model(img)
 # kernel = cv.getStructuringElement(cv.MORPH_RECT, (9, 9))
 last_nums = []
@@ -51,7 +51,7 @@ for r in result:
 
             nRes = reader.readtext(blackhat, detail=0)
             if len(nRes) > 0:
-                last_nums.append(nRes)
+                last_nums.append(''.join(nRes).replace(' ', ''))
 
             # number = number.replace(' ', '')
             # print(number)
