@@ -1,77 +1,76 @@
 import cv2 as cv
+import numpy as np
+from typing import List
+from dataclasses import dataclass
 from ultralytics import YOLO
-import matplotlib.pyplot as plt
-import pytesseract
 import easyocr
+from blacksheep import Application, post, FromFiles, bad_request, no_content, json
+import uvicorn
 
-pytesseract.pytesseract.tesseract_cmd = 'E:\\Tesseract-OCR\\tesseract.exe'
-
-model = YOLO('model/best.pt')
-img = cv.imread('source/car8.jpg')
-result = model(img)
-# kernel = cv.getStructuringElement(cv.MORPH_RECT, (9, 9))
-last_nums = []
-blackHats = []
-
+app = Application()
+model = YOLO('models/best.pt')
 reader = easyocr.Reader(['en'])
+ALLOWED_TYPES = ['image/jpeg', 'image/png']
 
 
-def get_kernel(image_width, image_height):
-    kernel_size = int(0.1 * min(image_width, image_height))
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (kernel_size, kernel_size))
-    return kernel
+@dataclass
+class CarNumber:
+    text: str
+    image: bytes
 
 
-for r in result:
-    boxes = r.boxes
-    for box in boxes:
-        print('box found')
-        x, y, w, h = box.xyxy[0]
-        x, y, w, h = int(x), int(y), int(w), int(h)
+@dataclass
+class CarResponse:
+    car_numbers: List[CarNumber] = None
 
-        img = cv.rectangle(img, (x, y), (w, h), (255, 0, 255), 3)
 
-        roi = img[y:h, x:w]
+def recognize_car_numbers(img) -> List[CarNumber]:
+    result = model(img)
+    car_numbers = []
 
-        kernel = get_kernel(w, h)
+    for r in result:
+        boxes = r.boxes
+        for box in boxes:
+            x, y, w, h = map(int, box.xyxy[0])
+            roi = img[y:h, x:w]
 
-        if roi.size != 0:
+            if roi.size == 0:
+                continue
+
             blackhat = cv.morphologyEx(
                 cv.cvtColor(roi, cv.COLOR_BGR2GRAY),
-                cv.MORPH_BLACKHAT, kernel
+                cv.MORPH_BLACKHAT,
+                cv.getStructuringElement(cv.MORPH_ELLIPSE, (int(0.1 * min(w, h)), int(0.1 * min(w, h))))
             )
 
-            blackHats.append(blackhat)
+            plate_text = reader.readtext(blackhat, detail=0)
+            plate_text = ''.join(plate_text).replace(' ', '')
+            if 2 < len(plate_text) < 9:
+                car_numbers.append(CarNumber(plate_text, cv.imencode('.jpg', blackhat)[1].tobytes()))
 
-            # number = pytesseract.image_to_string(
-            #     blackhat,
-            #     config=r'--oem 3 -c tessedit_char_whitelist'
-            #            r'=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
-            # ).replace('\n', '')
+    return car_numbers
 
-            nRes = reader.readtext(blackhat, detail=0)
-            nRes = ''.join(nRes).replace(' ', '')
-            if 2 < len(nRes) < 9:
-                last_nums.append(nRes)
 
-            # number = number.replace(' ', '')
-            # print(number)
-            #
-            # if 5 < len(number) < 12:
-            #     last_nums.append(number.upper())
-            #     last_img = roi
+@post("/recognize")
+def post_example(files: FromFiles):
+    if not files.value:
+        return bad_request("No files provided")
 
-print(last_nums)
-# plt.imshow(img)
-# plt.title(', '.join(last_nums))
-# plt.show()
+    file = files.value[0]
+    content_type = file.content_type.decode('utf-8')
 
-count = len(blackHats)
-print(count)
-f, p = plt.subplots(count + 1)
+    if content_type not in ALLOWED_TYPES:
+        return bad_request("Invalid file type. Only jpeg and png are allowed")
 
-p[0].imshow(img)
-for i in range(count):
-    p[i + 1].imshow(blackHats[i], cmap='gray')
+    img_array = np.frombuffer(file.data, np.uint8)
+    img = cv.imdecode(img_array, cv.IMREAD_COLOR)
+    car_numbers = recognize_car_numbers(img)
 
-plt.show()
+    if len(car_numbers) == 0:
+        return no_content()
+
+    return json(CarResponse(car_numbers))
+
+
+if __name__ == '__main__':
+    uvicorn.run("main:app", port=5000, log_level="info")
