@@ -50,7 +50,7 @@ def recognize_car_numbers(img) -> List[CarNumber]:
                 cv.getStructuringElement(cv.MORPH_ELLIPSE, (int(0.1 * min(w, h)), int(0.1 * min(w, h))))
             )
 
-            plate_text = reader.readtext(blackhat, detail=0, mag_ratio=3)
+            plate_text = reader.readtext(blackhat, detail=0)
             plate_text = ''.join(plate_text).replace(' ', '')
             if 2 < len(plate_text) < 9:
                 retval, buffer = cv.imencode('.jpg', blackhat)
