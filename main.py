@@ -1,3 +1,5 @@
+import base64
+
 import cv2 as cv
 import numpy as np
 from typing import List
@@ -8,6 +10,11 @@ from blacksheep import Application, post, FromFiles, bad_request, no_content, js
 import uvicorn
 
 app = Application()
+app.use_cors(
+    allow_origins="*",
+    allow_methods="*",
+)
+
 model = YOLO('models/best.pt')
 reader = easyocr.Reader(['en'])
 ALLOWED_TYPES = ['image/jpeg', 'image/png']
@@ -16,7 +23,7 @@ ALLOWED_TYPES = ['image/jpeg', 'image/png']
 @dataclass
 class CarNumber:
     text: str
-    image: bytes
+    image: str
 
 
 @dataclass
@@ -25,11 +32,11 @@ class CarResponse:
 
 
 def recognize_car_numbers(img) -> List[CarNumber]:
-    result = model(img)
+    results = model(img)
     car_numbers = []
 
-    for r in result:
-        boxes = r.boxes
+    for result in results:
+        boxes = result.boxes
         for box in boxes:
             x, y, w, h = map(int, box.xyxy[0])
             roi = img[y:h, x:w]
@@ -43,10 +50,12 @@ def recognize_car_numbers(img) -> List[CarNumber]:
                 cv.getStructuringElement(cv.MORPH_ELLIPSE, (int(0.1 * min(w, h)), int(0.1 * min(w, h))))
             )
 
-            plate_text = reader.readtext(blackhat, detail=0)
+            plate_text = reader.readtext(blackhat, detail=0, mag_ratio=3)
             plate_text = ''.join(plate_text).replace(' ', '')
             if 2 < len(plate_text) < 9:
-                car_numbers.append(CarNumber(plate_text, cv.imencode('.jpg', blackhat)[1].tobytes()))
+                retval, buffer = cv.imencode('.jpg', blackhat)
+                base64_image = base64.b64encode(buffer).decode('utf-8')
+                car_numbers.append(CarNumber(plate_text, base64_image))
 
     return car_numbers
 
