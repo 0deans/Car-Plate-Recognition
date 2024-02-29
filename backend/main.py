@@ -55,7 +55,7 @@ def recognize_car_numbers(img) -> List[CarNumber]:
             if 2 < len(plate_text) < 9:
                 retval, buffer = cv.imencode('.jpg', blackhat)
                 base64_image = base64.b64encode(buffer).decode('utf-8')
-                car_numbers.append(CarNumber('plate_text', base64_image))
+                car_numbers.append(CarNumber(plate_text, base64_image))
 
     return car_numbers
 
