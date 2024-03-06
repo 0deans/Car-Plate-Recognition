@@ -61,7 +61,7 @@ def recognize_car_numbers(img) -> List[CarNumber]:
 
 
 @post("/recognize")
-def post_example(files: FromFiles):
+def recognize(files: FromFiles):
     if not files.value:
         return bad_request("No files provided")
 
