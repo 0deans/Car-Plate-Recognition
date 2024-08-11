@@ -27,7 +27,6 @@ This project uses the following Python libraries for the backend:
 The frontend is built using Svelte and Tailwind CSS with the following key dependencies:
 
 -   `@iconify/svelte` - For scalable vector icons.
--   `@sveltejs/adapter-auto` - For automatic deployment.
 -   `@sveltejs/adapter-static` - For static site generation.
 -   `tailwindcss` - For utility-first CSS styling.
 -   `typescript` - For type-safe development.
